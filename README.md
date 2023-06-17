@@ -2,6 +2,9 @@
 
 An experimental tool to convert LaTeX math to Typst math
 
+Try it now on your browser!
+https://msakuta.github.io/latypst/
+
 ## Overview
 
 [Typst](https://typst.app/) is a great typesetting software, but they decided to make the math markup not compatible with LaTeX's.
