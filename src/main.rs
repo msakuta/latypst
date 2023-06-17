@@ -27,6 +27,7 @@ fn replace_cmd(elems: &[Element]) -> String {
             ret.push(' ');
         }
     };
+    let mut env_stack = vec![];
 
     while ptr < elems.len() {
         let elem = &elems[ptr];
@@ -65,6 +66,34 @@ fn replace_cmd(elems: &[Element]) -> String {
                         ptr += 1;
                         continue;
                     }
+                    "left" | "right" => {
+                        ptr += 1;
+                        continue;
+                    }
+                    "varepsilon" => {
+                        put_optional_space(&mut ret);
+                        ret += "epsilon";
+                        ptr += 1;
+                        continue;
+                    }
+                    "begin" => {
+                        let env = &elems[ptr + 1];
+                        if is_math_env(env) {
+                            ret += "$ ";
+                        }
+                        env_stack.push(env);
+                        ptr += 2;
+                        println!("Begun align {env:?}");
+                        continue;
+                    }
+                    "end" => {
+                        if is_math_env(&elems[ptr + 1]) {
+                            ret += " $\n";
+                        }
+                        env_stack.pop();
+                        ptr += 2;
+                        continue;
+                    }
                     _ => (),
                 }
                 put_optional_space(&mut ret);
@@ -78,17 +107,36 @@ fn replace_cmd(elems: &[Element]) -> String {
             Element::IMath(im) => {
                 ret += "$";
                 ret += &replace_cmd(im);
-                ret += "$";
+                ret += "$\n";
             }
             Element::DMath(im) => {
                 ret += "$ ";
                 ret += &replace_cmd(im);
-                ret += " $";
+                ret += " $\n";
             }
         }
         ptr += 1;
     }
     ret
+}
+
+fn is_math_env(elem: &Element) -> bool {
+    match elem {
+        Element::Str(env) => {
+            matches!(&env as &str, "align" | "align*" | "equation" | "eqnarray")
+        }
+        Element::Brace(br) => {
+            let s: String = br
+                .iter()
+                .map(|e| match e {
+                    Element::Char(c) => *c,
+                    _ => ' ',
+                })
+                .collect();
+            matches!(&s as &str, "align" | "align*" | "equation" | "eqnarray")
+        }
+        _ => false,
+    }
 }
 
 fn replace_brace(br: &Element) -> String {
@@ -130,9 +178,7 @@ fn brace(i: &str) -> IResult<&str, Element> {
 
 fn display_math(i: &str) -> IResult<&str, Element> {
     let (i, _) = tag("$$")(i)?;
-    dbg!(&i);
     let (i, elems) = math_elements(i)?;
-    dbg!(&i, &elems);
     let (i, _) = tag("$$")(i)?;
     Ok((i, Element::DMath(elems)))
 }

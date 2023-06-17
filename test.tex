@@ -1,0 +1,17 @@
+$$
+\frac{\partial \mathcal{L}}{\partial q_i} - \frac{d}{dt}\frac{\partial \mathcal{L}}{\partial \dot{q_i}} = 0
+$$
+
+
+$$ A = \int_{t_0}^{t_1} f(x(t), \dot{x}(t)) dt $$
+
+$$
+\delta A = \int_{t_0}^{t_1} \delta f(x, \dot{x})dt = 0
+$$
+
+\begin{align*}
+    \frac{\partial}{\partial x_i} f_i &=
+    \frac{\partial}{\partial x_i} f \left(x_i, \frac{x_i - x_{i-1}}{\varepsilon}\right) \\
+    &= \frac{\partial f_i}{\partial x_i} + \frac{\partial v_i}{\partial x_i} \frac{\partial f_i}{\partial v_i} \\
+    &= \frac{\partial f_i}{\partial x_i} + \frac{1}{\varepsilon} \frac{\partial f_i}{\partial v_i}
+    \end{align*}
