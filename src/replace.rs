@@ -1,5 +1,8 @@
 use crate::Element;
 use regex::Regex;
+use std::sync::OnceLock;
+
+static REPLACE_RULES: OnceLock<Vec<(Regex, String)>> = OnceLock::new();
 
 pub fn replace_cmd(elems: &[Element]) -> String {
     let mut ret = String::new();
@@ -11,12 +14,14 @@ pub fn replace_cmd(elems: &[Element]) -> String {
     };
     let mut env_stack = vec![];
 
-    let replace_rules = vec![
-        (Regex::new("notag").unwrap(), ""),
-        (Regex::new("partial").unwrap(), "diff"),
-        (Regex::new("varepsilon").unwrap(), "epsilon"),
-        (Regex::new("int").unwrap(), "integral"),
-    ];
+    let replace_rules = REPLACE_RULES.get_or_init(|| {
+        vec![
+            (Regex::new("notag").unwrap(), "".to_string()),
+            (Regex::new("partial").unwrap(), "diff".to_string()),
+            (Regex::new("varepsilon").unwrap(), "epsilon".to_string()),
+            (Regex::new("int").unwrap(), "integral".to_string()),
+        ]
+    });
 
     'next_cmd: while ptr < elems.len() {
         let elem = &elems[ptr];
@@ -69,7 +74,7 @@ pub fn replace_cmd(elems: &[Element]) -> String {
                         continue;
                     }
                     _ => {
-                        for (rule, replacer) in &replace_rules {
+                        for (rule, replacer) in replace_rules.iter() {
                             if rule.is_match(s) {
                                 put_optional_space(&mut ret);
                                 ret += replacer;
