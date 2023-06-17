@@ -1,3 +1,5 @@
-/target
+target/
 out.typ
 out.pdf
+node_modules/
+pkg/
