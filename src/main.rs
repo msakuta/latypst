@@ -51,6 +51,13 @@ fn replace_cmd(elems: &[Element]) -> String {
                         ptr += 1;
                         continue;
                     }
+                    "mathcal" => {
+                        put_optional_space(&mut ret);
+                        ret += "cal";
+                        ret += &replace_brace(&elems[ptr + 1]);
+                        ptr += 2;
+                        continue;
+                    }
                     _ => (),
                 }
                 ret += s;
