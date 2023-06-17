@@ -1,8 +1,8 @@
-use std::{mem::replace, io::{Read, Write}};
+use std::io::{Read, Write};
 
 use nom::{
     branch::alt,
-    character::complete::{alpha1, anychar, char, multispace0, none_of},
+    character::complete::{alpha1, char, multispace0, none_of},
     multi::many0,
     IResult, Parser,
 };
@@ -25,8 +25,10 @@ fn replace_cmd(elems: &[Element]) -> String {
         let elem = &elems[ptr];
         match elem {
             Element::Char(c) => {
+                if !ret.chars().last().unwrap_or(' ').is_whitespace() {
+                    ret.push(' ');
+                }
                 ret.push(*c);
-                ret.push(' ');
             }
             Element::Str(s) => {
                 match *s {
@@ -47,6 +49,11 @@ fn replace_cmd(elems: &[Element]) -> String {
                 ret += "(";
                 ret += &replace_cmd(&br);
                 ret += ")";
+            }
+            Element::IMath(im) => {
+                ret += "$";
+                ret += &replace_cmd(im);
+                ret += "$";
             }
         }
         ptr += 1;
@@ -80,6 +87,7 @@ enum Element<'src> {
     Str(&'src str),
     Char(char),
     Brace(Vec<Element<'src>>),
+    IMath(Vec<Element<'src>>),
 }
 
 fn brace(i: &str) -> IResult<&str, Element> {
@@ -89,14 +97,26 @@ fn brace(i: &str) -> IResult<&str, Element> {
     Ok((i, Element::Brace(elems)))
 }
 
+fn inline_math(i: &str) -> IResult<&str, Element> {
+    let (i, _) = char('$')(i)?;
+    let (i, elems) = elements(i)?;
+    let (i, _) = char('$')(i)?;
+    Ok((i, Element::IMath(elems)))
+}
+
 fn any_ch(i: &str) -> IResult<&str, Element> {
-    let (i, c) = none_of("}")(i)?;
+    let (i, c) = none_of("}$")(i)?;
     Ok((i, Element::Char(c)))
 }
 
 fn element(i: &str) -> IResult<&str, Element> {
     let (i, _) = multispace0(i)?;
-    let (i, res) = alt((brace, escaped_element.map(|r| Element::Str(r)), any_ch))(i)?;
+    let (i, res) = alt((
+        brace,
+        inline_math,
+        escaped_element.map(|r| Element::Str(r)),
+        any_ch,
+    ))(i)?;
     Ok((i, res))
 }
 
@@ -116,6 +136,23 @@ fn test_elements() {
                 Element::Char('a'),
                 Element::Str("Hello"),
                 Element::Str("World")
+            ]
+        ))
+    );
+}
+
+#[test]
+fn test_imath() {
+    let s = "$\\Hello \\World$";
+    assert_eq!(
+        elements(s),
+        Ok((
+            "",
+            vec![
+                Element::IMath(vec![
+                    Element::Str("Hello"),
+                    Element::Str("World")
+                ])
             ]
         ))
     );
