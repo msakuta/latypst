@@ -21,13 +21,17 @@ fn main() {
 fn replace_cmd(elems: &[Element]) -> String {
     let mut ret = String::new();
     let mut ptr = 0;
+    let put_optional_space = |ret: &mut String| {
+        if !ret.chars().last().unwrap_or(' ').is_whitespace() {
+            ret.push(' ');
+        }
+    };
+
     while ptr < elems.len() {
         let elem = &elems[ptr];
         match elem {
             Element::Char(c) => {
-                if !ret.chars().last().unwrap_or(' ').is_whitespace() {
-                    ret.push(' ');
-                }
+                put_optional_space(&mut ret);
                 ret.push(*c);
             }
             Element::Str(s) => {
@@ -39,6 +43,12 @@ fn replace_cmd(elems: &[Element]) -> String {
                         ret += "/";
                         ret += &under;
                         ptr += 3;
+                        continue;
+                    }
+                    "partial" => {
+                        put_optional_space(&mut ret);
+                        ret += "diff";
+                        ptr += 1;
                         continue;
                     }
                     _ => (),
@@ -148,12 +158,10 @@ fn test_imath() {
         elements(s),
         Ok((
             "",
-            vec![
-                Element::IMath(vec![
-                    Element::Str("Hello"),
-                    Element::Str("World")
-                ])
-            ]
+            vec![Element::IMath(vec![
+                Element::Str("Hello"),
+                Element::Str("World")
+            ])]
         ))
     );
 }
