@@ -20,6 +20,7 @@ pub fn replace_cmd(elems: &[Element]) -> String {
             (Regex::new("partial").unwrap(), "diff".to_string()),
             (Regex::new("varepsilon").unwrap(), "epsilon".to_string()),
             (Regex::new("int").unwrap(), "integral".to_string()),
+            (Regex::new("vec").unwrap(), "arrow".to_string()),
         ]
     });
 
