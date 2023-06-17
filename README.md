@@ -17,7 +17,7 @@ If it works for a math between $ symbols, this project would achieve the goal.
 Command:
 
 ```
-echo "$\\frac{df}{df}$" | cargo r; typst compile out.typ
+echo '$\frac{df}{dx} = \dot{f}$' | cargo r; typst compile out.typ
 ```
 
 Output:
