@@ -59,6 +59,12 @@ fn replace_cmd(elems: &[Element]) -> String {
                         ptr += 2;
                         continue;
                     }
+                    "int" => {
+                        put_optional_space(&mut ret);
+                        ret += "integral";
+                        ptr += 1;
+                        continue;
+                    }
                     _ => (),
                 }
                 put_optional_space(&mut ret);
