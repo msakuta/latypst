@@ -7,6 +7,7 @@ use nom::{
     multi::many0,
     IResult, Parser,
 };
+use regex::Regex;
 
 fn main() {
     let mut s = String::new();
@@ -29,7 +30,14 @@ fn replace_cmd(elems: &[Element]) -> String {
     };
     let mut env_stack = vec![];
 
-    while ptr < elems.len() {
+    let replace_rules = vec![
+        (Regex::new("notag").unwrap(), ""),
+        (Regex::new("partial").unwrap(), "diff"),
+        (Regex::new("varepsilon").unwrap(), "epsilon"),
+        (Regex::new("int").unwrap(), "integral"),
+    ];
+
+    'next_cmd: while ptr < elems.len() {
         let elem = &elems[ptr];
         match elem {
             Element::Char(c) => {
@@ -47,12 +55,6 @@ fn replace_cmd(elems: &[Element]) -> String {
                         ptr += 3;
                         continue;
                     }
-                    "partial" => {
-                        put_optional_space(&mut ret);
-                        ret += "diff";
-                        ptr += 1;
-                        continue;
-                    }
                     "mathcal" => {
                         put_optional_space(&mut ret);
                         ret += "cal";
@@ -60,19 +62,7 @@ fn replace_cmd(elems: &[Element]) -> String {
                         ptr += 2;
                         continue;
                     }
-                    "int" => {
-                        put_optional_space(&mut ret);
-                        ret += "integral";
-                        ptr += 1;
-                        continue;
-                    }
                     "left" | "right" => {
-                        ptr += 1;
-                        continue;
-                    }
-                    "varepsilon" => {
-                        put_optional_space(&mut ret);
-                        ret += "epsilon";
                         ptr += 1;
                         continue;
                     }
@@ -83,7 +73,6 @@ fn replace_cmd(elems: &[Element]) -> String {
                         }
                         env_stack.push(env);
                         ptr += 2;
-                        println!("Begun align {env:?}");
                         continue;
                     }
                     "end" => {
@@ -94,7 +83,20 @@ fn replace_cmd(elems: &[Element]) -> String {
                         ptr += 2;
                         continue;
                     }
-                    _ => (),
+                    "label" => {
+                        ptr += 2;
+                        continue;
+                    }
+                    _ => {
+                        for (rule, replacer) in &replace_rules {
+                            if rule.is_match(s) {
+                                put_optional_space(&mut ret);
+                                ret += replacer;
+                                ptr += 1;
+                                continue 'next_cmd;
+                            }
+                        }
+                    }
                 }
                 put_optional_space(&mut ret);
                 ret += s;
