@@ -1,4 +1,4 @@
-import { entry } from "../pkg/index.js";
+import { entry, default_replace_rules } from "../pkg/index.js";
 
 
 function runCommon(process) {
@@ -7,8 +7,9 @@ function runCommon(process) {
     output.value = "";
 
     const source = document.getElementById("input").value;
+    const rules = document.getElementById("rules").value;
     try{
-        output.value = process(source);
+        output.value = process(source, rules);
     }
     catch(e){
         output.value = e;
@@ -18,3 +19,5 @@ function runCommon(process) {
 document.getElementById("run").addEventListener("click", () => runCommon(entry));
 
 document.getElementById("input").value = `$ \\frac{df}{dx} $`;
+
+document.getElementById("rules").value = default_replace_rules();

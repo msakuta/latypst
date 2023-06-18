@@ -4,7 +4,22 @@ use std::sync::OnceLock;
 
 static REPLACE_RULES: OnceLock<Vec<(Regex, String)>> = OnceLock::new();
 
-pub fn replace_cmd(elems: &[Element]) -> String {
+pub fn default_replace_rules() -> &'static [(Regex, String)] {
+    REPLACE_RULES.get_or_init(|| {
+        vec![
+            (Regex::new("notag").unwrap(), "".to_string()),
+            (Regex::new("partial").unwrap(), "diff".to_string()),
+            (Regex::new("varepsilon").unwrap(), "epsilon".to_string()),
+            (Regex::new("int").unwrap(), "integral".to_string()),
+            (Regex::new("vec").unwrap(), "arrow".to_string()),
+            (Regex::new("ddot").unwrap(), "dot.double".to_string()),
+            (Regex::new("langle").unwrap(), "angle.l".to_string()),
+            (Regex::new("rangle").unwrap(), "angle.r".to_string()),
+        ]
+    })
+}
+
+pub fn replace_cmd(elems: &[Element], replace_rules: &[(Regex, String)]) -> String {
     let mut ret = String::new();
     let mut ptr = 0;
     let put_optional_space = |ret: &mut String| {
@@ -13,17 +28,6 @@ pub fn replace_cmd(elems: &[Element]) -> String {
         }
     };
     let mut env_stack = vec![];
-
-    let replace_rules = REPLACE_RULES.get_or_init(|| {
-        vec![
-            (Regex::new("notag").unwrap(), "".to_string()),
-            (Regex::new("partial").unwrap(), "diff".to_string()),
-            (Regex::new("varepsilon").unwrap(), "epsilon".to_string()),
-            (Regex::new("int").unwrap(), "integral".to_string()),
-            (Regex::new("vec").unwrap(), "arrow".to_string()),
-            (Regex::new("ddot").unwrap(), "dot.double".to_string()),
-        ]
-    });
 
     'next_cmd: while ptr < elems.len() {
         let elem = &elems[ptr];
@@ -35,8 +39,8 @@ pub fn replace_cmd(elems: &[Element]) -> String {
             Element::Str(s) => {
                 match *s {
                     "frac" => {
-                        let over = replace_brace(&elems[ptr + 1]);
-                        let under = replace_brace(&elems[ptr + 2]);
+                        let over = replace_brace(&elems[ptr + 1], replace_rules);
+                        let under = replace_brace(&elems[ptr + 2], replace_rules);
                         ret += &over;
                         ret += "/";
                         ret += &under;
@@ -46,7 +50,7 @@ pub fn replace_cmd(elems: &[Element]) -> String {
                     "mathcal" => {
                         put_optional_space(&mut ret);
                         ret += "cal";
-                        ret += &replace_brace(&elems[ptr + 1]);
+                        ret += &replace_brace(&elems[ptr + 1], replace_rules);
                         ptr += 2;
                         continue;
                     }
@@ -91,17 +95,17 @@ pub fn replace_cmd(elems: &[Element]) -> String {
             }
             Element::Brace(br) => {
                 ret += "(";
-                ret += &replace_cmd(&br);
+                ret += &replace_cmd(&br, replace_rules);
                 ret += ")";
             }
             Element::IMath(im) => {
                 ret += "$";
-                ret += &replace_cmd(im);
+                ret += &replace_cmd(im, replace_rules);
                 ret += "$\n";
             }
             Element::DMath(im) => {
                 ret += "$ ";
-                ret += &replace_cmd(im);
+                ret += &replace_cmd(im, replace_rules);
                 ret += " $\n";
             }
         }
@@ -129,11 +133,11 @@ fn is_math_env(elem: &Element) -> bool {
     }
 }
 
-fn replace_brace(br: &Element) -> String {
+fn replace_brace(br: &Element, replace_rules: &[(Regex, String)]) -> String {
     let Element::Brace(br) = br else { return "".to_string(); };
     let mut ret = String::new();
     ret += "(";
-    ret += &replace_cmd(br);
+    ret += &replace_cmd(br, replace_rules);
     ret += ")";
     ret
 }
