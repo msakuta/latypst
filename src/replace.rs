@@ -13,6 +13,10 @@ pub fn default_replace_rules() -> &'static [(Regex, String)] {
             (Regex::new("int").unwrap(), "integral".to_string()),
             (Regex::new("vec").unwrap(), "arrow".to_string()),
             (Regex::new("ddot").unwrap(), "dot.double".to_string()),
+            (Regex::new("cdots").unwrap(), "dots.c".to_string()),
+            (Regex::new("vdots").unwrap(), "dots.v".to_string()),
+            (Regex::new("hdots").unwrap(), "dots.h".to_string()),
+            (Regex::new("ddots").unwrap(), "dots.down".to_string()),
             (Regex::new("langle").unwrap(), "angle.l".to_string()),
             (Regex::new("rangle").unwrap(), "angle.r".to_string()),
         ]
