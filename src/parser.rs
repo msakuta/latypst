@@ -26,6 +26,30 @@ pub enum Element<'src> {
     DMath(Vec<Element<'src>>),
 }
 
+fn escaped_char(i: &str) -> IResult<&str, Element> {
+    let (i, _) = char('\\')(i)?;
+    let mut it = i.chars();
+    let ch = it
+        .next()
+        .ok_or_else(|| nom::Err::Error(nom::error::Error::new(i, nom::error::ErrorKind::Alpha)))?;
+    if ch.is_alphabetic() {
+        return Err(nom::Err::Error(nom::error::Error::new(
+            i,
+            nom::error::ErrorKind::Alpha,
+        )));
+    }
+    let ret = it.as_str();
+    Ok((ret, Element::Char(ch)))
+}
+
+#[test]
+fn test_escaped_char() {
+    let s = "\\\\";
+    assert_eq!(escaped_char(s), Ok(("", Element::Char('\\'))));
+    let s = "\\*";
+    assert_eq!(escaped_char(s), Ok(("", Element::Char('*'))));
+}
+
 fn brace(i: &str) -> IResult<&str, Element> {
     let (i, _) = char('{')(i)?;
     let (i, elems) = elements(i)?;
@@ -55,6 +79,7 @@ fn any_ch(i: &str) -> IResult<&str, Element> {
 fn element(i: &str) -> IResult<&str, Element> {
     let (i, _) = multispace0(i)?;
     let (i, res) = alt((
+        escaped_char,
         brace,
         display_math, // DMath comes before IMath
         inline_math,
@@ -67,7 +92,12 @@ fn element(i: &str) -> IResult<&str, Element> {
 
 fn math_element(i: &str) -> IResult<&str, Element> {
     let (i, _) = multispace0(i)?;
-    let (i, res) = alt((brace, escaped_element.map(|r| Element::Str(r)), any_ch))(i)?;
+    let (i, res) = alt((
+        escaped_char,
+        brace,
+        escaped_element.map(|r| Element::Str(r)),
+        any_ch,
+    ))(i)?;
     let (i, _) = multispace0(i)?;
     Ok((i, res))
 }

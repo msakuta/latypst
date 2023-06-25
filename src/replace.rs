@@ -1,25 +1,29 @@
 use crate::Element;
 use regex::Regex;
-use std::sync::OnceLock;
+use std::{error::Error, sync::OnceLock};
 
 static REPLACE_RULES: OnceLock<Vec<(Regex, String)>> = OnceLock::new();
 
 pub fn default_replace_rules() -> &'static [(Regex, String)] {
     REPLACE_RULES.get_or_init(|| {
-        vec![
-            (Regex::new("notag").unwrap(), "".to_string()),
-            (Regex::new("partial").unwrap(), "diff".to_string()),
-            (Regex::new("varepsilon").unwrap(), "epsilon".to_string()),
-            (Regex::new("int").unwrap(), "integral".to_string()),
-            (Regex::new("vec").unwrap(), "arrow".to_string()),
-            (Regex::new("ddot").unwrap(), "dot.double".to_string()),
-            (Regex::new("cdots").unwrap(), "dots.c".to_string()),
-            (Regex::new("vdots").unwrap(), "dots.v".to_string()),
-            (Regex::new("hdots").unwrap(), "dots.h".to_string()),
-            (Regex::new("ddots").unwrap(), "dots.down".to_string()),
-            (Regex::new("langle").unwrap(), "angle.l".to_string()),
-            (Regex::new("rangle").unwrap(), "angle.r".to_string()),
-        ]
+        let source = "
+notag/
+partial/diff
+varepsilon/epsilon
+int/integral
+vec/arrow
+ddot/dot.double
+cdots/dots
+vdots/dots
+hdots/dots
+ddots/dots.down
+langle/angle
+rangle/angle
+circletimes/times.circle
+mathbf/bold
+textbf/bold
+";
+        parse_replace_rules(source).unwrap()
     })
 }
 
@@ -31,14 +35,27 @@ pub fn replace_cmd(elems: &[Element], replace_rules: &[(Regex, String)]) -> Stri
             ret.push(' ');
         }
     };
-    let mut env_stack = vec![];
+    let mut env_stack: Vec<&Element> = vec![];
 
     'next_cmd: while ptr < elems.len() {
         let elem = &elems[ptr];
         match elem {
             Element::Char(c) => {
                 put_optional_space(&mut ret);
-                ret.push(*c);
+                if env_stack
+                    .last()
+                    .copied()
+                    .map(is_matrix_env)
+                    .unwrap_or(false)
+                {
+                    match c {
+                        '&' => ret.push(','),
+                        '\\' => ret += ";\n",
+                        _ => ret.push(*c),
+                    }
+                } else {
+                    ret.push(*c);
+                }
             }
             Element::Str(s) => {
                 match *s {
@@ -66,6 +83,8 @@ pub fn replace_cmd(elems: &[Element], replace_rules: &[(Regex, String)]) -> Stri
                         let env = &elems[ptr + 1];
                         if is_math_env(env) {
                             ret += "$ ";
+                        } else if is_matrix_env(env) {
+                            ret += "mat(";
                         }
                         env_stack.push(env);
                         ptr += 2;
@@ -74,6 +93,8 @@ pub fn replace_cmd(elems: &[Element], replace_rules: &[(Regex, String)]) -> Stri
                     "end" => {
                         if is_math_env(&elems[ptr + 1]) {
                             ret += " $\n";
+                        } else if is_matrix_env(&elems[ptr + 1]) {
+                            ret += ")";
                         }
                         env_stack.pop();
                         ptr += 2;
@@ -137,6 +158,29 @@ fn is_math_env(elem: &Element) -> bool {
     }
 }
 
+fn is_matrix_env(env: &Element) -> bool {
+    match env {
+        Element::Str(env) => matches!(
+            *env,
+            "matrix" | "pmatrix" | "bmatrix" | "Bmatrix" | "vmatrix" | "Vmatrix"
+        ),
+        Element::Brace(br) => {
+            let s: String = br
+                .iter()
+                .map(|e| match e {
+                    Element::Char(c) => *c,
+                    _ => ' ',
+                })
+                .collect();
+            matches!(
+                &s as &str,
+                "matrix" | "pmatrix" | "bmatrix" | "Bmatrix" | "vmatrix" | "Vmatrix"
+            )
+        }
+        _ => false,
+    }
+}
+
 fn replace_brace(br: &Element, replace_rules: &[(Regex, String)]) -> String {
     let Element::Brace(br) = br else { return "".to_string(); };
     let mut ret = String::new();
@@ -144,4 +188,15 @@ fn replace_brace(br: &Element, replace_rules: &[(Regex, String)]) -> String {
     ret += &replace_cmd(br, replace_rules);
     ret += ")";
     ret
+}
+
+pub fn parse_replace_rules(s: &str) -> Result<Vec<(Regex, String)>, Box<dyn Error>> {
+    let mut replace_rules = vec![];
+    for line in s.split("\n") {
+        let mut sections = line.split("/");
+        if let (Some(from), Some(to)) = (sections.next(), sections.next()) {
+            replace_rules.push((Regex::new(from)?, to.to_owned()));
+        }
+    }
+    Ok(replace_rules)
 }
